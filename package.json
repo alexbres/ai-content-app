@@ -1,0 +1,21 @@
+{
+  "name": "ai-content-app",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w backend & npm run dev -w frontend",
+    "build": "npm -ws run build --if-present",
+    "lint": "npm -ws run lint --if-present",
+    "start": "npm start -w backend"
+  },
+  "engines": {
+    "node": ">=18.17"
+  },
+  "packageManager": "npm@10"
+}
+
+
