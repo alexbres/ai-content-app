@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import router from './routes/index.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { logger } from './utils/logger.js';
+import { testConnection } from './services/database.js';
 
 const app = express();
 
@@ -31,5 +32,16 @@ app.listen(port, () => {
 });
 
 export default app;
+
+
+// Test DB connection at startup (non-blocking but logged)
+(async () => {
+  try {
+    await testConnection(3, 500);
+    logger.info('Database connection OK');
+  } catch {
+    logger.error('Database connection not available at startup');
+  }
+})();
 
 
