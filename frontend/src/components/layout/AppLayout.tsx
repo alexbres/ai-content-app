@@ -6,11 +6,16 @@ import { ReactNode } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import Link from '@mui/material/Link'
 import { useThemeMode } from '../../styles/theme'
+import { LoginButton } from '../common/LoginButton'
+import { LogoutButton } from '../common/LogoutButton'
+import { useAuth } from '../../hooks/useAuth'
+import { UserProfile } from '../common/UserProfile'
 
 type Props = { children: ReactNode }
 
 export function AppLayout({ children }: Props) {
   const { mode, toggleColorMode } = useThemeMode()
+  const { isAuthenticated } = useAuth()
 
   return (
     <Box display="flex" minHeight="100dvh" flexDirection="column">
@@ -32,7 +37,9 @@ export function AppLayout({ children }: Props) {
             <Link component={RouterLink} to="/admin" color="inherit" underline="hover">
               Admin
             </Link>
+            {isAuthenticated ? <UserProfile /> : null}
           </Box>
+          {isAuthenticated ? <LogoutButton color="inherit" /> : <LoginButton color="inherit" />}
           <IconButton color="inherit" onClick={toggleColorMode} aria-label="toggle theme">
             {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
           </IconButton>
