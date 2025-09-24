@@ -31,9 +31,6 @@ export function AppLayout({ children }: Props) {
             <Link component={RouterLink} to="/" color="inherit" underline="hover">
               Home
             </Link>
-            <Link component={RouterLink} to="/login" color="inherit" underline="hover">
-              Login
-            </Link>
             <Link component={RouterLink} to="/admin" color="inherit" underline="hover">
               Admin
             </Link>
