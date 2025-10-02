@@ -1,8 +1,10 @@
 export type PostFilters = {
   status?: 'draft' | 'published' | 'archived';
-  label?: string;
+  label?: string; // single label (back-compat)
+  labels?: string[]; // multiple labels (OR)
+  is_premium?: boolean;
   author_id?: number;
-  q?: string;
+  q?: string; // title ILIKE
 };
 
 export function buildPostWhere(filters: PostFilters = {}, idxStart = 1): {
@@ -28,11 +30,23 @@ export function buildPostWhere(filters: PostFilters = {}, idxStart = 1): {
     clauses.push(`$${i++} = ANY(labels)`);
     params.push(filters.label);
   }
+  if (filters.labels && filters.labels.length) {
+    const ors: string[] = [];
+    for (const lbl of filters.labels) {
+      ors.push(`$${i++} = ANY(labels)`);
+      params.push(lbl);
+    }
+    clauses.push(`(${ors.join(' OR ')})`);
+  }
+
+  if (typeof filters.is_premium === 'boolean') {
+    clauses.push(`is_premium = $${i++}`);
+    params.push(filters.is_premium);
+  }
 
   if (filters.q) {
-    clauses.push(`(title ILIKE $${i} OR content ILIKE $${i})`);
+    clauses.push(`title ILIKE $${i++}`);
     params.push(`%${filters.q}%`);
-    i += 1;
   }
 
   const whereSql = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
