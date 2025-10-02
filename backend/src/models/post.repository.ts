@@ -50,15 +50,21 @@ export class PostRepository {
       data.labels ?? [],
       data.author_id,
     ];
+    const client = await pool.connect();
     try {
       logger.debug('PostRepository.create start', { title: data.title, author_id: data.author_id });
-      const { rows } = await pool.query<Post>(sql, params);
+      await client.query('BEGIN');
+      const { rows } = await client.query<Post>(sql, params);
       const created = rows[0];
+      await client.query('COMMIT');
       logger.info('PostRepository.create success', { id: created.id });
       return created;
     } catch (error) {
+      try { await client.query('ROLLBACK'); } catch {}
       logger.error('PostRepository.create failed', { error: (error as Error).message, data });
       throw error;
+    } finally {
+      client.release();
     }
   }
 
@@ -73,15 +79,21 @@ export class PostRepository {
     if (!fields.length) return this.findById(id);
     const sql = `UPDATE posts SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${i} RETURNING *`;
     values.push(id);
+    const client = await pool.connect();
     try {
       logger.debug('PostRepository.update start', { id, fields: Object.keys(data) });
-      const { rows } = await pool.query<Post>(sql, values);
+      await client.query('BEGIN');
+      const { rows } = await client.query<Post>(sql, values);
       const updated = rows[0] ?? null;
+      await client.query('COMMIT');
       logger.info('PostRepository.update success', { updated: Boolean(updated), id });
       return updated;
     } catch (error) {
+      try { await client.query('ROLLBACK'); } catch {}
       logger.error('PostRepository.update failed', { error: (error as Error).message, id, data });
       throw error;
+    } finally {
+      client.release();
     }
   }
 

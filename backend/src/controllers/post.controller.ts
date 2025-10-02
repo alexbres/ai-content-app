@@ -3,6 +3,7 @@ import { PostRepository } from '../models/post.repository.js'
 import { InteractionRepository } from '../models/interaction.repository.js'
 import { CommentRepository } from '../models/comment.repository.js'
 import { SubscriptionRepository } from '../models/subscription.repository.js'
+import { UserRepository } from '../models/user.repository.js'
 import { pool } from '../services/database.js'
 import type { PostFilters } from '../utils/filtering.js'
 
@@ -30,11 +31,18 @@ async function enrichPost(post: any, userId?: number) {
   return enriched
 }
 
+async function resolveNumericUserIdFromReq(req: Request): Promise<number | null> {
+  const u = (req as any).user as { id?: string | number } | undefined
+  if (!u?.id) return null
+  if (typeof u.id === 'number') return u.id
+  const auth0Id = String(u.id)
+  const user = await UserRepository.findByAuth0Id(auth0Id)
+  return user?.id ?? null
+}
+
 async function ensurePremiumAccess(post: any, req: Request) {
   if (!post.is_premium) return true
-  const authUser = (req as any).user as { id?: string | number } | undefined
-  if (!authUser?.id) return false
-  const numericUserId = typeof authUser.id === 'string' ? Number(authUser.id) : authUser.id
+  const numericUserId = await resolveNumericUserIdFromReq(req)
   if (!numericUserId) return false
   const sub = await SubscriptionRepository.findByUserId(numericUserId)
   return Boolean(sub && (sub.status === 'active' || sub.status === 'trial' || sub.status === 'past_due'))
@@ -68,8 +76,7 @@ export class PostController {
 
       // favorites filter requires auth user
       if (favoritesOnly) {
-        const authUser = (req as any).user as { id?: string | number } | undefined
-        const numericUserId = authUser?.id ? (typeof authUser.id === 'string' ? Number(authUser.id) : authUser.id) : undefined
+        const numericUserId = await resolveNumericUserIdFromReq(req)
         if (!numericUserId) {
           return res.status(401).json({ error: 'Unauthorized' })
         }
@@ -84,6 +91,18 @@ export class PostController {
         } else {
           data = []
         }
+      }
+
+      // If premiumOnly requested, enforce premium subscription
+      if (premiumOnly) {
+        const ok = await (async () => {
+          // check subscription for current user
+          const numericUserId = await resolveNumericUserIdFromReq(req)
+          if (!numericUserId) return false
+          const sub = await SubscriptionRepository.findByUserId(numericUserId)
+          return Boolean(sub && (sub.status === 'active' || sub.status === 'trial' || sub.status === 'past_due'))
+        })()
+        if (!ok) return res.status(402).json({ error: 'Payment Required' })
       }
 
       res.json({
