@@ -86,7 +86,15 @@ export class PostController {
         }
       }
 
-      res.json({ data, total: page.total, limit, offset })
+      res.json({
+        posts: data,
+        pagination: {
+          page: pageNum,
+          limit,
+          total: page.total,
+          pages: Math.max(1, Math.ceil(page.total / limit)),
+        },
+      })
     } catch (err) {
       next(err)
     }
