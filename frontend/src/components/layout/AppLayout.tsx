@@ -9,6 +9,7 @@ import { useThemeMode } from '../../styles/theme'
 import { LoginButton } from '../common/LoginButton'
 import { LogoutButton } from '../common/LogoutButton'
 import { useAuth } from '../../hooks/useAuth'
+import { useRole } from '../../hooks/useRole'
 import { UserProfile } from '../common/UserProfile'
 
 type Props = { children: ReactNode }
@@ -16,6 +17,7 @@ type Props = { children: ReactNode }
 export function AppLayout({ children }: Props) {
   const { mode, toggleColorMode } = useThemeMode()
   const { isAuthenticated } = useAuth()
+  const { isAdmin } = useRole()
 
   return (
     <Box display="flex" minHeight="100dvh" flexDirection="column">
@@ -31,9 +33,11 @@ export function AppLayout({ children }: Props) {
             <Link component={RouterLink} to="/" color="inherit" underline="hover">
               Home
             </Link>
-            <Link component={RouterLink} to="/admin" color="inherit" underline="hover">
-              Admin
-            </Link>
+            {isAdmin ? (
+              <Link component={RouterLink} to="/admin" color="inherit" underline="hover">
+                Admin
+              </Link>
+            ) : null}
             {isAuthenticated ? <UserProfile /> : null}
           </Box>
           {isAuthenticated ? <LogoutButton color="inherit" /> : <LoginButton color="inherit" />}

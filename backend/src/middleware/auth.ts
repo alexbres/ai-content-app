@@ -12,7 +12,7 @@ export const requireAuth: RequestHandler = auth({
 
 export function checkRole(role: string): RequestHandler {
   return (req, res, next) => {
-    const rolesClaim = process.env.AUTH0_ROLES_CLAIM || 'https://your.app/roles'
+    const rolesClaim = process.env.AUTH0_ROLES_CLAIM || 'https://example.com/roles'
     const roles: string[] = (req.auth?.payload[rolesClaim] as string[]) || []
     if (!roles.includes(role)) return res.status(403).json({ error: 'forbidden' })
     next()
@@ -23,7 +23,9 @@ export const extractUser: RequestHandler = (req, _res, next) => {
   // expose basic user info for handlers
   const sub = req.auth?.payload.sub
   const email = (req.auth?.payload as any)?.email
-  ;(req as any).user = { id: sub, email }
+  const rolesClaim = process.env.AUTH0_ROLES_CLAIM || 'https://example.com/roles'
+  const roles: string[] = (req.auth?.payload[rolesClaim] as string[]) || []
+  ;(req as any).user = { id: sub, email, roles }
   next()
 }
 
