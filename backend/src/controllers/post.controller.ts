@@ -3,6 +3,7 @@ import { PostRepository } from '../models/post.repository.js'
 import { InteractionRepository } from '../models/interaction.repository.js'
 import { CommentRepository } from '../models/comment.repository.js'
 import { SubscriptionRepository } from '../models/subscription.repository.js'
+import { pool } from '../services/database.js'
 import type { PostFilters } from '../utils/filtering.js'
 
 function parseFilters(req: Request): { filters: PostFilters; limit?: number; offset?: number } {
@@ -42,10 +43,50 @@ async function ensurePremiumAccess(post: any, req: Request) {
 export class PostController {
   static async list(req: Request, res: Response, next: NextFunction) {
     try {
-      const { filters, limit, offset } = parseFilters(req)
+      // New query contract
+      // interface PostsQuery { page?: number; limit?: number; labels?: string[]; search?: string; favorites?: boolean; premium?: boolean }
+
+      const pageParam = typeof req.query.page === 'string' ? Number(req.query.page) : undefined
+      const limitParam = typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined
+      const labelsParam = typeof req.query.labels === 'string' ? req.query.labels.split(',').map((s) => s.trim()).filter(Boolean) : undefined
+      const searchParam = typeof req.query.search === 'string' ? req.query.search : undefined
+      const favoritesOnly = req.query.favorites === 'true'
+      const premiumOnly = req.query.premium === 'true'
+
+      const limit = Math.max(1, Math.min(limitParam ?? 20, 100))
+      const pageNum = Math.max(1, pageParam ?? 1)
+      const offset = (pageNum - 1) * limit
+
+      const { filters } = parseFilters(req)
+      filters.labels = labelsParam ?? filters.labels
+      filters.q = searchParam ?? filters.q
+      if (premiumOnly) filters.is_premium = true
+
+      // base list
       const page = await PostRepository.findWithFilters(filters, { limit, offset })
-      const data = await Promise.all(page.data.map((p) => enrichPost(p, undefined)))
-      res.json({ ...page, data })
+      let data = await Promise.all(page.data.map((p) => enrichPost(p)))
+
+      // favorites filter requires auth user
+      if (favoritesOnly) {
+        const authUser = (req as any).user as { id?: string | number } | undefined
+        const numericUserId = authUser?.id ? (typeof authUser.id === 'string' ? Number(authUser.id) : authUser.id) : undefined
+        if (!numericUserId) {
+          return res.status(401).json({ error: 'Unauthorized' })
+        }
+        const ids = data.map((p) => p.id)
+        if (ids.length) {
+          const { rows } = await pool.query<{ post_id: number }>(
+            `SELECT post_id FROM interactions WHERE user_id = $1 AND type = 'favorite' AND post_id = ANY($2::int[])`,
+            [numericUserId, ids]
+          )
+          const favSet = new Set(rows.map((r) => r.post_id))
+          data = data.filter((p) => favSet.has(p.id))
+        } else {
+          data = []
+        }
+      }
+
+      res.json({ data, total: page.total, limit, offset })
     } catch (err) {
       next(err)
     }

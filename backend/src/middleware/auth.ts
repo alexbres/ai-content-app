@@ -31,4 +31,14 @@ export const extractUser: RequestHandler = (req, _res, next) => {
 
 export const requireScopes = (scopes: string[]): RequestHandler => requiredScopes(scopes)
 
+// Optional auth: tries to authenticate and extract user, but does not fail the request
+export const optionalAuth: RequestHandler = (req, res, next) => {
+  if (!audience || !issuerBaseURL) return next()
+  const mw = auth({ audience, issuerBaseURL, tokenSigningAlg: 'RS256' })
+  mw(req, res, (err?: unknown) => {
+    if (err) return next()
+    return extractUser(req, res, next)
+  })
+}
+
 

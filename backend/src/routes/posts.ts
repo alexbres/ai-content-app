@@ -1,12 +1,12 @@
 import { Router } from 'express'
-import { requireAuth, extractUser } from '../middleware/auth.js'
+import { requireAuth, extractUser, optionalAuth } from '../middleware/auth.js'
 import { requireRole } from '../middleware/rbac.js'
 import { PostController } from '../controllers/post.controller.js'
 
 const router = Router()
 
 // GET /api/posts - list with filters and pagination
-router.get('/', PostController.list)
+router.get('/', optionalAuth, PostController.list)
 
 // GET /api/posts/:id - get one
 router.get('/:id', PostController.get)
