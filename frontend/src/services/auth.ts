@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosRequestConfig } from 'axios'
+import axios, { AxiosInstance, type InternalAxiosRequestConfig } from 'axios'
 import { Auth0ContextInterface, User } from '@auth0/auth0-react'
 
 let auth0: Auth0ContextInterface<User> | null = null
@@ -19,10 +19,15 @@ export async function getAccessToken(): Promise<string | null> {
 
 export function createAuthedHttp(baseURL = '/api'): AxiosInstance {
   const instance = axios.create({ baseURL, withCredentials: true })
-  instance.interceptors.request.use(async (config: AxiosRequestConfig) => {
+  instance.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
     const token = await getAccessToken()
     if (token) {
-      config.headers = { ...(config.headers || {}), Authorization: `Bearer ${token}` }
+      const headers: any = config.headers || {}
+      if (typeof headers.set === 'function') {
+        headers.set('Authorization', `Bearer ${token}`)
+      } else {
+        config.headers = { ...headers, Authorization: `Bearer ${token}` } as any
+      }
     }
     return config
   })
