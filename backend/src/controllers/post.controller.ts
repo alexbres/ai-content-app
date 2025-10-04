@@ -136,8 +136,15 @@ export class PostController {
   static async create(req: Request, res: Response, next: NextFunction) {
     try {
       const body = req.body as Partial<Parameters<typeof PostRepository.create>[0]>
-      if (!body?.title || !body?.content || typeof body.author_id !== 'number') {
-        return res.status(400).json({ error: 'title, content, author_id are required' })
+      if (!body?.title || !body?.content) {
+        return res.status(400).json({ error: 'title and content are required' })
+      }
+      // Derive author_id from authenticated user if not provided
+      let authorId = typeof body.author_id === 'number' ? body.author_id : null
+      if (!authorId) {
+        const numericUserId = await resolveNumericUserIdFromReq(req)
+        if (!numericUserId) return res.status(401).json({ error: 'Unauthorized' })
+        authorId = numericUserId
       }
       const created = await PostRepository.create({
         title: body.title,
@@ -146,7 +153,7 @@ export class PostController {
         status: body.status ?? 'draft',
         is_premium: Boolean(body.is_premium),
         labels: Array.isArray(body.labels) ? body.labels : [],
-        author_id: body.author_id,
+        author_id: authorId!,
       })
       res.status(201).json(created)
     } catch (err) {

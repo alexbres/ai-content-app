@@ -36,7 +36,7 @@ const createBody = Joi.object({
   status: Joi.string().valid('draft', 'published', 'archived').default('draft'),
   is_premium: Joi.boolean().default(false),
   labels: Joi.array().items(Joi.string()).default([]),
-  author_id: Joi.number().integer().required(),
+  author_id: Joi.number().integer().optional(),
 })
 router.post('/', validate(createBody), requireAuth, extractUser, requireRole(['admin']), PostController.create)
 
