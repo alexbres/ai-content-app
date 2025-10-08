@@ -45,7 +45,7 @@ async function ensurePremiumAccess(post: any, req: Request) {
   const numericUserId = await resolveNumericUserIdFromReq(req)
   if (!numericUserId) return false
   const sub = await SubscriptionRepository.findByUserId(numericUserId)
-  return Boolean(sub && (sub.status === 'active' || sub.status === 'trial' || sub.status === 'past_due'))
+  return Boolean(sub && (sub.status === 'active' || sub.status === 'past_due' || sub.plan === 'trial'))
 }
 
 export class PostController {
@@ -100,7 +100,7 @@ export class PostController {
           const numericUserId = await resolveNumericUserIdFromReq(req)
           if (!numericUserId) return false
           const sub = await SubscriptionRepository.findByUserId(numericUserId)
-          return Boolean(sub && (sub.status === 'active' || sub.status === 'trial' || sub.status === 'past_due'))
+          return Boolean(sub && (sub.status === 'active' || sub.status === 'past_due' || sub.plan === 'trial'))
         })()
         if (!ok) return res.status(402).json({ error: 'Payment Required' })
       }

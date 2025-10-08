@@ -12,7 +12,8 @@ export async function getAccessToken(): Promise<string | null> {
   try {
     const token = await auth0.getAccessTokenSilently()
     return token
-  } catch {
+  } catch (error) {
+    console.error('Error getting access token:', error)
     return null
   }
 }
