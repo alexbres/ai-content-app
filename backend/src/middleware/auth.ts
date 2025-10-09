@@ -22,7 +22,8 @@ export function checkRole(role: string): RequestHandler {
 export const extractUser: RequestHandler = (req, _res, next) => {
   // expose basic user info for handlers
   const sub = req.auth?.payload.sub
-  const email = (req.auth?.payload as any)?.email
+  const emailClaim = process.env.AUTH0_EMAIL_CLAIM || 'https://example.com/email'
+  const email = (req.auth?.payload as any)?.[emailClaim]
   const rolesClaim = process.env.AUTH0_ROLES_CLAIM || 'https://example.com/roles'
   const roles: string[] = (req.auth?.payload[rolesClaim] as string[]) || []
   ;(req as any).user = { id: sub, email, roles }

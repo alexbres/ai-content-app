@@ -28,6 +28,7 @@ export function AuthProvider({ children }: Props) {
       authorizationParams={{
         redirect_uri: window.location.origin,
         audience,
+        scope: 'openid profile email offline_access',
       }}
       cacheLocation="localstorage"
       useRefreshTokens

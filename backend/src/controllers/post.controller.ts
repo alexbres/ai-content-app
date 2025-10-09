@@ -32,12 +32,17 @@ async function enrichPost(post: any, userId?: number) {
 }
 
 async function resolveNumericUserIdFromReq(req: Request): Promise<number | null> {
-  const u = (req as any).user as { id?: string | number } | undefined
+  const u = (req as any).user as { id?: string | number; email?: string } | undefined
   if (!u?.id) return null
   if (typeof u.id === 'number') return u.id
   const auth0Id = String(u.id)
-  const user = await UserRepository.findByAuth0Id(auth0Id)
-  return user?.id ?? null
+  const existing = await UserRepository.findByAuth0Id(auth0Id)
+  if (existing) return existing.id
+  const email = typeof u.email === 'string' ? u.email : undefined
+  if (!email) return null
+  // Auto-provision user on first authenticated write
+  const created = await UserRepository.create({ auth0_id: auth0Id, email })
+  return created.id
 }
 
 async function ensurePremiumAccess(post: any, req: Request) {
