@@ -5,11 +5,13 @@ import { ProtectedRoute } from './components/common/ProtectedRoute'
 import { AdminRoute } from './components/common/AdminRoute'
 import { AdminPostsPage } from './pages/AdminPostsPage'
 import { AdminPostEditPage } from './pages/AdminPostEditPage'
+import { PostDetail } from './components/posts'
 
 export function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
+      <Route path="/posts/:id" element={<PostDetail />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<AdminRoute />}>
           <Route path="/admin" element={<AdminPage />} />

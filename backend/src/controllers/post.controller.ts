@@ -87,6 +87,23 @@ export class PostController {
         }
       }
 
+      // attach user_interaction for authenticated user on list view
+      {
+        const numericUserId = await resolveNumericUserIdFromReq(req)
+        if (numericUserId) {
+          const ids = data.map((p) => p.id)
+          if (ids.length) {
+            const { rows } = await pool.query<{ post_id: number; type: 'like' | 'dislike' | 'favorite' }>(
+              `SELECT post_id, type FROM interactions WHERE user_id = $1 AND post_id = ANY($2::int[])`,
+              [numericUserId, ids]
+            )
+            const map = new Map<number, 'like' | 'dislike' | 'favorite'>()
+            for (const r of rows) map.set(r.post_id, r.type)
+            data = data.map((p) => ({ ...p, user_interaction: map.get(p.id) ?? null }))
+          }
+        }
+      }
+
       // If premiumOnly requested, enforce premium subscription
       if (premiumOnly) {
         const ok = await (async () => {

@@ -73,4 +73,61 @@ export async function archivePost(id: number): Promise<void> {
 }
 
 
+// Interactions & Comments
+
+export type InteractionStats = {
+  likes: number
+  dislikes: number
+  comments: number
+  userInteraction: 'like' | 'dislike' | 'favorite' | null
+}
+
+export type CommentResponse = {
+  id: number
+  content: string
+  created_at: string
+  user: {
+    name?: string
+    avatar_url?: string
+  }
+}
+
+export async function getInteractions(postId: number): Promise<InteractionStats> {
+  const { data } = await http.get(`/posts/${postId}/interactions`)
+  return data as InteractionStats
+}
+
+export async function toggleLike(postId: number): Promise<InteractionStats> {
+  const { data } = await authedHttp.post(`/posts/${postId}/like`)
+  return data as InteractionStats
+}
+
+export async function toggleDislike(postId: number): Promise<InteractionStats> {
+  const { data } = await authedHttp.post(`/posts/${postId}/dislike`)
+  return data as InteractionStats
+}
+
+export async function toggleFavorite(postId: number): Promise<InteractionStats> {
+  const { data } = await authedHttp.post(`/posts/${postId}/favorite`)
+  return data as InteractionStats
+}
+
+export async function listComments(postId: number, opts: { page?: number; limit?: number } = {}): Promise<CommentResponse[]> {
+  const query = new URLSearchParams()
+  if (opts.page) query.set('page', String(opts.page))
+  if (opts.limit) query.set('limit', String(opts.limit))
+  const { data } = await http.get(`/posts/${postId}/comments?${query.toString()}`)
+  return data as CommentResponse[]
+}
+
+export async function createComment(postId: number, content: string): Promise<CommentResponse> {
+  const { data } = await authedHttp.post(`/posts/${postId}/comments`, { content })
+  return data as CommentResponse
+}
+
+export async function deleteComment(commentId: number): Promise<void> {
+  await authedHttp.delete(`/comments/${commentId}`)
+}
+
+
 
