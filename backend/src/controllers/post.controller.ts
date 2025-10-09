@@ -4,6 +4,7 @@ import { InteractionRepository } from '../models/interaction.repository.js'
 import { CommentRepository } from '../models/comment.repository.js'
 import { SubscriptionRepository } from '../models/subscription.repository.js'
 import { UserRepository } from '../models/user.repository.js'
+import { resolveNumericUserIdFromReq } from '../utils/auth.js'
 import { pool } from '../services/database.js'
 import type { PostFilters } from '../utils/filtering.js'
 
@@ -31,19 +32,7 @@ async function enrichPost(post: any, userId?: number) {
   return enriched
 }
 
-async function resolveNumericUserIdFromReq(req: Request): Promise<number | null> {
-  const u = (req as any).user as { id?: string | number; email?: string } | undefined
-  if (!u?.id) return null
-  if (typeof u.id === 'number') return u.id
-  const auth0Id = String(u.id)
-  const existing = await UserRepository.findByAuth0Id(auth0Id)
-  if (existing) return existing.id
-  const email = typeof u.email === 'string' ? u.email : undefined
-  if (!email) return null
-  // Auto-provision user on first authenticated write
-  const created = await UserRepository.create({ auth0_id: auth0Id, email })
-  return created.id
-}
+// moved to utils/auth
 
 async function ensurePremiumAccess(post: any, req: Request) {
   if (!post.is_premium) return true
