@@ -42,6 +42,8 @@ export async function listPosts(params: {
   status?: PostStatus
   labels?: string[]
   search?: string
+  favorites?: boolean
+  premium?: boolean
 } = {}): Promise<Paginated<PostModel>> {
   const query = new URLSearchParams()
   if (params.page) query.set('page', String(params.page))
@@ -49,6 +51,8 @@ export async function listPosts(params: {
   if (params.status) query.set('status', params.status)
   if (params.labels?.length) query.set('labels', params.labels.join(','))
   if (params.search) query.set('search', params.search)
+  if (params.favorites) query.set('favorites', '1')
+  if (params.premium) query.set('premium', '1')
   const { data } = await http.get(`/posts?${query.toString()}`)
   return paginatedSchema.parse(data)
 }

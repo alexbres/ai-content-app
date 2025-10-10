@@ -26,7 +26,7 @@ export function PostCard({ post, onClick, onLike, onDislike, onFavorite, loading
   const favored = post.user_interaction === 'favorite'
 
   return (
-    <Card variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <Card variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column', maxWidth: '100%', overflow: 'hidden' }}>
       <CardActionArea onClick={() => onClick?.(post.id)} sx={{ flexGrow: 1 }}>
         <CardHeader
           title={
@@ -36,18 +36,18 @@ export function PostCard({ post, onClick, onLike, onDislike, onFavorite, loading
                   <LockIcon fontSize="small" />
                 </Tooltip>
               )}
-              <Typography component="h3" variant="h6" noWrap>{post.title}</Typography>
+              <Typography component="h3" variant="h6" sx={{ minWidth: 0, maxWidth: '100%', whiteSpace: 'normal', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{post.title}</Typography>
             </Stack>
           }
           subheader={
-            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ maxWidth: '100%', overflow: 'hidden' }}>
               {post.labels?.map((l) => (
                 <Chip key={l} size="small" label={l} variant="outlined" />
               ))}
             </Stack>
           }
         />
-        <CardContent>
+        <CardContent sx={{ overflow: 'hidden' }}>
           <Typography variant="body2" color="text.secondary" sx={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
             {preview}
           </Typography>
