@@ -37,14 +37,15 @@ export class PostRepository {
 
   static async create(data: Omit<Post, 'id' | 'created_at' | 'updated_at' | 'like_count' | 'dislike_count' | 'comment_count' | 'user_interaction'>): Promise<Post> {
     const sql = `
-      INSERT INTO posts (title, content, preview, status, is_premium, labels, author_id)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      INSERT INTO posts (title, content, preview, image_id, status, is_premium, labels, author_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *
     `;
     const params = [
       data.title,
       data.content,
       data.preview ?? null,
+      data.image_id ?? null,
       data.status ?? 'draft',
       data.is_premium ?? false,
       data.labels ?? [],

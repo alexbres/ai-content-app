@@ -28,6 +28,11 @@ export function PostCard({ post, onClick, onLike, onDislike, onFavorite, loading
   return (
     <Card variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column', maxWidth: '100%', overflow: 'hidden' }}>
       <CardActionArea onClick={() => onClick?.(post.id)} sx={{ flexGrow: 1 }}>
+        {post.image_id && (
+          <Box sx={{ width: '100%', maxHeight: 240, overflow: 'hidden' }}>
+            <img src={`/api/images/${post.image_id}`} alt={post.title} style={{ width: '100%', display: 'block' }} />
+          </Box>
+        )}
         <CardHeader
           title={
             <Stack direction="row" alignItems="center" spacing={1}>

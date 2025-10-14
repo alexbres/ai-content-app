@@ -13,6 +13,7 @@ export interface Post {
   title: string;
   content: string;
   preview?: string;
+  image_id?: string | null;
   status: 'draft' | 'published' | 'archived';
   is_premium: boolean;
   labels: string[];

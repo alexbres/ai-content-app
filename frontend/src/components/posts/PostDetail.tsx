@@ -90,6 +90,11 @@ export function PostDetail() {
         <IconButton onClick={share}><ShareIcon /></IconButton>
       </Stack>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>{readingTime}</Typography>
+      {post.image_id && (
+        <Box sx={{ mb: 2 }}>
+          <img src={`/api/images/${post.image_id}`} alt={post.title} style={{ maxWidth: '100%', borderRadius: 8, display: 'block' }} />
+        </Box>
+      )}
       <Box sx={{ '& img': { maxWidth: '100%' } }}>
         <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[[rehypeSanitize]]}>{post.content}</ReactMarkdown>
       </Box>

@@ -47,6 +47,11 @@ export function PostEditor({ postId }: Props) {
           is_premium: Boolean(post.is_premium),
           status: post.status,
         })
+        if (post.image_id) {
+          setImage({ url: `/api/images/${post.image_id}` })
+        } else {
+          setImage(null)
+        }
       } catch (e: any) {
         setError(e?.message || 'Failed to load')
       } finally {
@@ -80,7 +85,10 @@ export function PostEditor({ postId }: Props) {
     }
     setSaving(true)
     try {
-      const payload: CreatePostInput | UpdatePostInput = { ...parsed.data }
+      const payload: any = { ...parsed.data }
+      if (image?.file) {
+        payload.image = image.file
+      }
       if (postId) {
         const updated = await updatePost(postId, payload)
         navigate(`/admin/posts/${updated.id}/edit`)

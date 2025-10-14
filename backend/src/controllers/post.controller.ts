@@ -42,6 +42,38 @@ async function ensurePremiumAccess(post: any, req: Request) {
   return Boolean(sub && (sub.status === 'active' || sub.status === 'past_due' || sub.plan === 'trial'))
 }
 
+import fs from 'node:fs/promises'
+import path from 'node:path'
+import url from 'node:url'
+import sharp from 'sharp'
+import { randomUUID } from 'node:crypto'
+
+const __filename = url.fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+const rootDir = path.resolve(__dirname, '../../..')
+
+function getImagesDir(): string {
+  // Place files in project-root/images (./../images from backend)
+  return path.join(rootDir, 'images')
+}
+
+async function saveImageBuffer(buffer: Buffer): Promise<string> {
+  const id = randomUUID()
+  const dir = getImagesDir()
+  await fs.mkdir(dir, { recursive: true })
+  const filePath = path.join(dir, `${id}.png`)
+  const pngBuffer = await sharp(buffer).rotate().png({ compressionLevel: 9 }).toBuffer()
+  await fs.writeFile(filePath, pngBuffer)
+  return id
+}
+
+async function deleteImageById(id?: string | null): Promise<void> {
+  if (!id) return
+  try {
+    await fs.unlink(path.join(getImagesDir(), `${id}.png`))
+  } catch {}
+}
+
 export class PostController {
   static async list(req: Request, res: Response, next: NextFunction) {
     try {
@@ -157,10 +189,17 @@ export class PostController {
         if (!numericUserId) return res.status(401).json({ error: 'Unauthorized' })
         authorId = numericUserId
       }
+      let image_id: string | undefined
+      const anyReq = req as any
+      if (anyReq.file?.buffer) {
+        image_id = await saveImageBuffer(anyReq.file.buffer)
+      }
+
       const created = await PostRepository.create({
         title: body.title,
         content: body.content,
         preview: body.preview,
+        image_id: image_id ?? null,
         status: body.status ?? 'draft',
         is_premium: Boolean(body.is_premium),
         labels: Array.isArray(body.labels) ? body.labels : [],
@@ -175,7 +214,16 @@ export class PostController {
   static async update(req: Request, res: Response, next: NextFunction) {
     try {
       const id = Number(req.params.id)
-      const updated = await PostRepository.update(id, req.body)
+      const anyReq = req as any
+      const payload: any = { ...req.body }
+      if (anyReq.file?.buffer) {
+        // If new image uploaded, save and optionally delete old
+        const existing = await PostRepository.findById(id)
+        const newId = await saveImageBuffer(anyReq.file.buffer)
+        payload.image_id = newId
+        await deleteImageById(existing?.image_id)
+      }
+      const updated = await PostRepository.update(id, payload)
       if (!updated) return res.status(404).json({ error: 'Not Found' })
       res.json(updated)
     } catch (err) {

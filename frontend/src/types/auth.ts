@@ -24,6 +24,7 @@ export interface PostModel {
   title: string
   content: string
   preview: string | null
+  image_id?: string | null
   status: PostStatus
   is_premium: boolean
   labels: string[]

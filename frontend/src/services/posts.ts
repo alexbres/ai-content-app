@@ -7,6 +7,7 @@ const postSchema = z.object({
   title: z.string().min(1),
   content: z.string().min(1),
   preview: z.string().nullable(),
+  image_id: z.string().uuid().nullable().optional(),
   status: z.union([z.literal('draft'), z.literal('published'), z.literal('archived')]),
   is_premium: z.boolean(),
   labels: z.array(z.string()),
@@ -28,6 +29,7 @@ export type CreatePostInput = {
   title: string
   content: string
   preview?: string | null
+  image?: File | null
   status?: PostStatus
   is_premium?: boolean
   labels?: string[]
@@ -63,11 +65,39 @@ export async function getPost(id: number): Promise<PostModel> {
 }
 
 export async function createPost(input: CreatePostInput): Promise<PostModel> {
+  const hasFile = Boolean(input.image)
+  if (hasFile) {
+    const form = new FormData()
+    form.set('title', input.title)
+    form.set('content', input.content)
+    if (input.preview != null) form.set('preview', input.preview)
+    if (input.status) form.set('status', input.status)
+    if (input.is_premium != null) form.set('is_premium', String(input.is_premium))
+    if (input.labels?.length) input.labels.forEach((l) => form.append('labels', l))
+    if (input.author_id != null) form.set('author_id', String(input.author_id))
+    form.append('image', input.image as Blob)
+    const { data } = await authedHttp.post('/posts', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+    return postSchema.parse(data)
+  }
   const { data } = await authedHttp.post('/posts', input)
   return postSchema.parse(data)
 }
 
-export async function updatePost(id: number, input: UpdatePostInput): Promise<PostModel> {
+export async function updatePost(id: number, input: UpdatePostInput & { image?: File | null }): Promise<PostModel> {
+  const hasFile = Boolean((input as any).image)
+  if (hasFile) {
+    const form = new FormData()
+    if (input.title) form.set('title', input.title)
+    if (input.content) form.set('content', input.content)
+    if (input.preview != null) form.set('preview', input.preview)
+    if (input.status) form.set('status', input.status)
+    if (input.is_premium != null) form.set('is_premium', String(input.is_premium))
+    if (input.labels?.length) input.labels.forEach((l) => form.append('labels', l))
+    if (input.author_id != null) form.set('author_id', String(input.author_id))
+    form.append('image', (input as any).image as Blob)
+    const { data } = await authedHttp.put(`/posts/${id}`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
+    return postSchema.parse(data)
+  }
   const { data } = await authedHttp.put(`/posts/${id}`, input)
   return postSchema.parse(data)
 }
