@@ -25,4 +25,7 @@ frontend/dist/
 backend/dist/
 frontend/.vite/
 
+# Images
+images/
+
 
