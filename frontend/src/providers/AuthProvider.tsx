@@ -10,7 +10,7 @@ export function AuthProvider({ children }: Props) {
   const domain = import.meta.env.VITE_AUTH0_DOMAIN as string
   const clientId = import.meta.env.VITE_AUTH0_CLIENT_ID as string
   const audience = import.meta.env.VITE_AUTH0_AUDIENCE as string | undefined
-
+  
   const onRedirectCallback = useCallback((appState?: AppState) => {
     const targetUrl = appState?.returnTo || window.location.pathname
     window.history.replaceState({}, document.title, targetUrl)
@@ -26,12 +26,12 @@ export function AuthProvider({ children }: Props) {
       domain={domain}
       clientId={clientId}
       authorizationParams={{
-        redirect_uri: window.location.origin,
-        audience,
+        redirect_uri: window.location.origin + '/',
+        // audience, // Temporarily disabled
         scope: 'openid profile email offline_access',
       }}
-      cacheLocation="localstorage"
-      useRefreshTokens
+      cacheLocation="memory"
+      useRefreshTokens={false}
       onRedirectCallback={onRedirectCallback}
     >
       <AuthBinder />
