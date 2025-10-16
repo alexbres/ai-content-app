@@ -67,6 +67,71 @@ export class SubscriptionRepository {
       throw error;
     }
   }
+
+  static async createOrUpdate(data: Omit<Subscription, 'id' | 'created_at' | 'updated_at'>): Promise<Subscription> {
+    try {
+      logger.debug('SubscriptionRepository.createOrUpdate start', { user_id: data.user_id });
+      
+      // Try to find existing subscription
+      const existing = await this.findByUserId(data.user_id);
+      
+      if (existing) {
+        // Update existing subscription
+        const updated = await this.update(existing.id, data);
+        if (!updated) {
+          throw new Error('Failed to update subscription');
+        }
+        logger.info('SubscriptionRepository.createOrUpdate success - updated', { id: updated.id });
+        return updated;
+      } else {
+        // Create new subscription
+        const created = await this.create(data);
+        logger.info('SubscriptionRepository.createOrUpdate success - created', { id: created.id });
+        return created;
+      }
+    } catch (error) {
+      logger.error('SubscriptionRepository.createOrUpdate failed', { error: (error as Error).message, data });
+      throw error;
+    }
+  }
+
+  static async updateStatus(userId: number, status: Subscription['status']): Promise<Subscription | null> {
+    try {
+      logger.debug('SubscriptionRepository.updateStatus start', { userId, status });
+      
+      const sql = `
+        UPDATE subscriptions 
+        SET status = $1, updated_at = NOW() 
+        WHERE user_id = $2 
+        RETURNING *
+      `;
+      
+      const { rows } = await pool.query<Subscription>(sql, [status, userId]);
+      const updated = rows[0] ?? null;
+      
+      logger.info('SubscriptionRepository.updateStatus success', { updated: Boolean(updated), userId, status });
+      return updated;
+    } catch (error) {
+      logger.error('SubscriptionRepository.updateStatus failed', { error: (error as Error).message, userId, status });
+      throw error;
+    }
+  }
+
+  static async findByStripeSubscriptionId(stripeSubscriptionId: string): Promise<Subscription | null> {
+    try {
+      logger.debug('SubscriptionRepository.findByStripeSubscriptionId start', { stripeSubscriptionId });
+      const { rows } = await pool.query<Subscription>(
+        'SELECT * FROM subscriptions WHERE stripe_subscription_id = $1', 
+        [stripeSubscriptionId]
+      );
+      const sub = rows[0] ?? null;
+      logger.info('SubscriptionRepository.findByStripeSubscriptionId success', { found: Boolean(sub), stripeSubscriptionId });
+      return sub;
+    } catch (error) {
+      logger.error('SubscriptionRepository.findByStripeSubscriptionId failed', { error: (error as Error).message, stripeSubscriptionId });
+      throw error;
+    }
+  }
 }
 
 

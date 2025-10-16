@@ -8,6 +8,7 @@ import url from 'node:url'
 import { fileTypeFromFile } from 'file-type'
 import interactions from './interactions.js'
 import comments from './comments.js'
+import { subscriptionRoutes } from './subscriptions.js'
 
 const router = Router();
 
@@ -56,6 +57,7 @@ router.get('/profile', requireAuth, extractUser, (req, res) => {
 router.use('/api/posts', posts)
 router.use('/api/posts', interactions)
 router.use('/api', comments)
+router.use('/api/subscriptions', subscriptionRoutes)
 
 export default router;
 

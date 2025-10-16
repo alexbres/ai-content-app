@@ -60,3 +60,19 @@ export interface PaginatedResult<T> {
   offset: number;
 }
 
+// Extend Express Request interface
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        id: number;
+        auth0_id: string;
+        email: string;
+        name?: string;
+        avatar_url?: string;
+      };
+      subscription?: Subscription;
+    }
+  }
+}
+
