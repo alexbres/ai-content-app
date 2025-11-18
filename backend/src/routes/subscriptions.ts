@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { SubscriptionController } from '../controllers/subscription.controller.js';
 import { requireAuth, extractUser } from '../middleware/auth.js';
 import { requireActiveSubscription } from '../middleware/subscription.js';
+import { logger } from '../utils/logger.js';
 
 const router = Router();
 
@@ -9,8 +10,30 @@ const router = Router();
 router.post('/webhook', SubscriptionController.handleWebhook);
 
 // All other subscription routes require authentication
-router.use(requireAuth);
-router.use(extractUser);
+router.use((req, res, next) => {
+  logger.debug('Subscription routes: before requireAuth', { 
+    path: req.path,
+    hasAuthHeader: !!req.headers.authorization,
+    authHeaderPrefix: req.headers.authorization?.substring(0, 20) + '...'
+  });
+  
+  requireAuth(req, res, (err) => {
+    if (err) {
+      logger.error('requireAuth failed', {
+        error: err instanceof Error ? err.message : String(err),
+        errorType: err instanceof Error ? err.constructor.name : typeof err,
+        path: req.path,
+        hasAuthHeader: !!req.headers.authorization
+      });
+    }
+    next(err);
+  });
+});
+
+router.use((req, res, next) => {
+  logger.debug('Subscription routes: before extractUser', { path: req.path, user: (req as any).user });
+  extractUser(req, res, next);
+});
 
 // Create checkout session
 router.post('/checkout', SubscriptionController.createCheckoutSession);

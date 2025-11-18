@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { StripeService } from '../services/stripeService.js';
 import { SubscriptionRepository } from '../models/subscription.repository.js';
 import { logger } from '../utils/logger.js';
+import { resolveNumericUserIdFromReq } from '../utils/auth.js';
 import Joi from 'joi';
 
 // Инициализируем StripeService только если есть ключ
@@ -29,7 +30,7 @@ export class SubscriptionController {
         return res.status(503).json({ error: 'Stripe service not configured' });
       }
 
-      const userId = req.user?.id;
+      const userId = await resolveNumericUserIdFromReq(req);
       if (!userId) {
         return res.status(401).json({ error: 'User not authenticated' });
       }
@@ -60,7 +61,7 @@ export class SubscriptionController {
       logger.info(`Created checkout session for user ${userId}`, { sessionId: session.id });
       res.json({ sessionId: session.id, url: session.url });
     } catch (error) {
-      logger.error('Error creating checkout session', { error, userId: req.user?.id });
+      logger.error('Error creating checkout session', { error, userId: await resolveNumericUserIdFromReq(req) });
       res.status(500).json({ error: 'Failed to create checkout session' });
     }
   }
@@ -71,7 +72,7 @@ export class SubscriptionController {
         return res.status(503).json({ error: 'Stripe service not configured' });
       }
 
-      const userId = req.user?.id;
+      const userId = await resolveNumericUserIdFromReq(req);
       if (!userId) {
         return res.status(401).json({ error: 'User not authenticated' });
       }
@@ -97,19 +98,25 @@ export class SubscriptionController {
       logger.info(`Created customer portal session for user ${userId}`, { sessionId: session.id });
       res.json({ url: session.url });
     } catch (error) {
-      logger.error('Error creating customer portal session', { error, userId: req.user?.id });
+      logger.error('Error creating customer portal session', { error });
       res.status(500).json({ error: 'Failed to create customer portal session' });
     }
   }
 
   static async getSubscriptionStatus(req: Request, res: Response) {
     try {
-      const userId = req.user?.id;
+      logger.debug('getSubscriptionStatus called', { user: (req as any).user });
+      
+      const userId = await resolveNumericUserIdFromReq(req);
+      logger.debug('resolveNumericUserIdFromReq result', { userId });
+      
       if (!userId) {
+        logger.warn('No userId resolved from request');
         return res.status(401).json({ error: 'User not authenticated' });
       }
 
       const subscription = await SubscriptionRepository.findByUserId(userId);
+      logger.debug('SubscriptionRepository.findByUserId result', { found: Boolean(subscription) });
       
       if (!subscription) {
         return res.json({ 
@@ -137,8 +144,13 @@ export class SubscriptionController {
         stripeSubscriptionId: subscription.stripe_subscription_id
       });
     } catch (error) {
-      logger.error('Error getting subscription status', { error, userId: req.user?.id });
-      res.status(500).json({ error: 'Failed to get subscription status' });
+      logger.error('Error getting subscription status', { 
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : 'Failed to get subscription status' 
+      });
     }
   }
 
@@ -148,7 +160,7 @@ export class SubscriptionController {
         return res.status(503).json({ error: 'Stripe service not configured' });
       }
 
-      const userId = req.user?.id;
+      const userId = await resolveNumericUserIdFromReq(req);
       if (!userId) {
         return res.status(401).json({ error: 'User not authenticated' });
       }
@@ -168,7 +180,7 @@ export class SubscriptionController {
         res.status(500).json({ error: 'Failed to cancel subscription' });
       }
     } catch (error) {
-      logger.error('Error canceling subscription', { error, userId: req.user?.id });
+      logger.error('Error canceling subscription', { error });
       res.status(500).json({ error: 'Failed to cancel subscription' });
     }
   }
@@ -211,7 +223,7 @@ export class SubscriptionController {
 
   static async checkPremiumAccess(req: Request, res: Response) {
     try {
-      const userId = req.user?.id;
+      const userId = await resolveNumericUserIdFromReq(req);
       if (!userId) {
         return res.status(401).json({ error: 'User not authenticated' });
       }
@@ -232,7 +244,7 @@ export class SubscriptionController {
         } : null
       });
     } catch (error) {
-      logger.error('Error checking premium access', { error, userId: req.user?.id });
+      logger.error('Error checking premium access', { error });
       res.status(500).json({ error: 'Failed to check premium access' });
     }
   }

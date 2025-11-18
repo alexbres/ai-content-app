@@ -1,8 +1,24 @@
 import { auth, requiredScopes } from 'express-oauth2-jwt-bearer'
 import type { RequestHandler } from 'express'
+import { logger } from '../utils/logger.js'
 
 const audience = process.env.AUTH0_AUDIENCE
 const issuerBaseURL = process.env.AUTH0_DOMAIN ? `https://${process.env.AUTH0_DOMAIN}/` : undefined
+
+// Log Auth0 configuration at startup
+if (!audience || !issuerBaseURL) {
+  logger.warn('Auth0 configuration incomplete', {
+    hasAudience: !!audience,
+    hasDomain: !!process.env.AUTH0_DOMAIN,
+    audience,
+    domain: process.env.AUTH0_DOMAIN
+  });
+} else {
+  logger.info('Auth0 configuration loaded', {
+    audience,
+    issuerBaseURL
+  });
+}
 
 export const requireAuth: RequestHandler = auth({
   audience,

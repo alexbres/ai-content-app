@@ -10,7 +10,11 @@ export function bindAuth0(ctx: Auth0ContextInterface<User>) {
 export async function getAccessToken(): Promise<string | null> {
   if (!auth0) return null
   try {
-    const token = await auth0.getAccessTokenSilently()
+    // Request token with audience to get JWT access token (not JWE ID token)
+    const audience = import.meta.env.VITE_AUTH0_AUDIENCE as string | undefined
+    const token = await auth0.getAccessTokenSilently({
+      authorizationParams: audience ? { audience } : undefined
+    })
     return token
   } catch (error) {
     console.error('Error getting access token:', error)

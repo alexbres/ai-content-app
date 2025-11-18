@@ -27,7 +27,7 @@ export function AuthProvider({ children }: Props) {
       clientId={clientId}
       authorizationParams={{
         redirect_uri: window.location.origin + '/',
-        // audience, // Temporarily disabled
+        audience: audience || undefined,
         scope: 'openid profile email offline_access',
       }}
       cacheLocation="memory"
