@@ -6,6 +6,7 @@ import { AdminRoute } from './components/common/AdminRoute'
 import { AdminPostsPage } from './pages/AdminPostsPage'
 import { AdminPostEditPage } from './pages/AdminPostEditPage'
 import { PostDetail } from './components/posts'
+import { SubscriptionPage } from './pages/SubscriptionPage'
 
 export function AppRoutes() {
   return (
@@ -13,6 +14,7 @@ export function AppRoutes() {
       <Route path="/" element={<HomePage />} />
       <Route path="/posts/:id" element={<PostDetail />} />
       <Route element={<ProtectedRoute />}>
+        <Route path="/subscription" element={<SubscriptionPage />} />
         <Route element={<AdminRoute />}>
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/admin/posts" element={<AdminPostsPage />} />

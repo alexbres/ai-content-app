@@ -38,6 +38,11 @@ export function AppLayout({ children }: Props) {
                 Admin
               </Link>
             ) : null}
+            {isAuthenticated ? (
+              <Link component={RouterLink} to="/subscription" color="inherit" underline="hover">
+                Subscription
+              </Link>
+            ) : null}
             {isAuthenticated ? <UserProfile /> : null}
           </Box>
           {isAuthenticated ? <LogoutButton color="inherit" /> : <LoginButton color="inherit" />}
