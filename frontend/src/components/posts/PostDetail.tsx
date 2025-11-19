@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Box, Breadcrumbs, Link as MLink, Typography, Stack, IconButton, Alert } from '@mui/material'
+import { Box, Breadcrumbs, Link as MLink, Typography, Stack, IconButton, Alert, Button } from '@mui/material'
 import ShareIcon from '@mui/icons-material/Share'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { getPost, getInteractions, toggleLike, toggleDislike, toggleFavorite, listComments, createComment } from '../../services/posts'
@@ -8,6 +8,9 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeSanitize from 'rehype-sanitize'
 import InteractionButtons from './InteractionButtons'
+import { PaywallModal } from '../subscriptions'
+import { useSubscription } from '../../hooks/useSubscription'
+import { useAuth } from '../../hooks/useAuth'
 
 export function PostDetail() {
   const { id } = useParams()
@@ -18,6 +21,11 @@ export function PostDetail() {
   const [err, setErr] = useState<string | null>(null)
   const [statsLoading, setStatsLoading] = useState<{ like?: boolean; dislike?: boolean; favorite?: boolean }>({})
   const [comments, setComments] = useState<{ id: number; content: string; created_at: string; user: { name?: string; avatar_url?: string } }[]>([])
+  const { isAuthenticated, loginWithRedirect } = useAuth()
+  const { isPremium, isLoading: subscriptionLoading } = useSubscription()
+  const [paywallOpen, setPaywallOpen] = useState(false)
+  const [paywallAutoOpened, setPaywallAutoOpened] = useState(false)
+  const [paywallCtaLoading, setPaywallCtaLoading] = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -46,6 +54,45 @@ export function PostDetail() {
     const minutes = Math.max(1, Math.round(words / 200))
     return `${minutes} min read`
   }, [post?.content])
+
+  const previewContent = useMemo(() => {
+    if (!post?.content) return ''
+    const chunks = post.content
+      .split(/\n{2,}/)
+      .map((p) => p.trim())
+      .filter(Boolean)
+    if (!chunks.length) return post.content
+    return chunks.slice(0, 2).join('\n\n')
+  }, [post?.content])
+
+  const shouldGate = Boolean(post?.is_premium) && !subscriptionLoading && !isPremium
+
+  useEffect(() => {
+    if (shouldGate && !paywallAutoOpened) {
+      setPaywallOpen(true)
+      setPaywallAutoOpened(true)
+    }
+    if (!shouldGate) {
+      setPaywallOpen(false)
+      setPaywallAutoOpened(false)
+    }
+  }, [shouldGate, paywallAutoOpened])
+
+  const handlePaywallSubscribe = async () => {
+    if (!post) return
+    if (!isAuthenticated) {
+      setPaywallCtaLoading(true)
+      try {
+        await loginWithRedirect({
+          appState: { returnTo: `/posts/${postId}` },
+        })
+      } finally {
+        setPaywallCtaLoading(false)
+      }
+      return
+    }
+    navigate('/subscription')
+  }
 
   const share = async () => {
     const url = window.location.href
@@ -95,31 +142,69 @@ export function PostDetail() {
           <img src={`/api/images/${post.image_id}`} alt={post.title} style={{ maxWidth: '100%', borderRadius: 8, display: 'block' }} />
         </Box>
       )}
-      <Box sx={{ '& img': { maxWidth: '100%' } }}>
-        <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[[rehypeSanitize]]}>{post.content}</ReactMarkdown>
-      </Box>
-      <Box sx={{ mt: 2 }}>
-        <InteractionButtons
-          liked={post.user_interaction === 'like'}
-          disliked={post.user_interaction === 'dislike'}
-          favored={post.user_interaction === 'favorite'}
-          likeCount={post.like_count || 0}
-          dislikeCount={post.dislike_count || 0}
-          onLike={onLike}
-          onDislike={onDislike}
-          onFavorite={onFavorite}
-          loading={statsLoading}
-        />
-      </Box>
-      <Box sx={{ mt: 4 }}>
-        <Typography variant="h6" sx={{ mb: 1 }}>Comments</Typography>
-        {comments.map((c) => (
-          <Box key={c.id} sx={{ py: 1, borderTop: (t) => `1px solid ${t.palette.divider}` }}>
-            <Typography variant="subtitle2">{c.user.name || 'User'}</Typography>
-            <Typography variant="body2">{c.content}</Typography>
+      <Box sx={{ position: 'relative', '& img': { maxWidth: '100%' } }}>
+        <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[[rehypeSanitize]]}>
+          {shouldGate ? previewContent : post.content}
+        </ReactMarkdown>
+        {shouldGate ? (
+          <Box
+            sx={{
+              mt: 3,
+              borderRadius: 2,
+              border: (t) => `1px dashed ${t.palette.warning.main}`,
+              p: 3,
+              textAlign: 'center',
+              bgcolor: (t) => t.palette.warning.light + '22',
+            }}
+          >
+            <Typography variant="subtitle1" gutterBottom>
+              Premium контент заблокирован
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Ты видишь только часть статьи. Оформи подписку, чтобы открыть полный материал, комментарии и реакции.
+            </Typography>
+            <Button variant="contained" onClick={() => setPaywallOpen(true)}>
+              Оформить подписку
+            </Button>
           </Box>
-        ))}
+        ) : null}
       </Box>
+      {!shouldGate ? (
+        <>
+          <Box sx={{ mt: 2 }}>
+            <InteractionButtons
+              liked={post.user_interaction === 'like'}
+              disliked={post.user_interaction === 'dislike'}
+              favored={post.user_interaction === 'favorite'}
+              likeCount={post.like_count || 0}
+              dislikeCount={post.dislike_count || 0}
+              onLike={onLike}
+              onDislike={onDislike}
+              onFavorite={onFavorite}
+              loading={statsLoading}
+            />
+          </Box>
+          <Box sx={{ mt: 4 }}>
+            <Typography variant="h6" sx={{ mb: 1 }}>
+              Comments
+            </Typography>
+            {comments.map((c) => (
+              <Box key={c.id} sx={{ py: 1, borderTop: (t) => `1px solid ${t.palette.divider}` }}>
+                <Typography variant="subtitle2">{c.user.name || 'User'}</Typography>
+                <Typography variant="body2">{c.content}</Typography>
+              </Box>
+            ))}
+          </Box>
+        </>
+      ) : null}
+      <PaywallModal
+        open={shouldGate && paywallOpen}
+        onClose={() => setPaywallOpen(false)}
+        onSubscribe={handlePaywallSubscribe}
+        content={post.content}
+        isLoading={paywallCtaLoading}
+        benefits={['Эксклюзивный AI-контент', 'Безлимитные генерации', 'Приоритетные обновления']}
+      />
     </Box>
   )
 }
