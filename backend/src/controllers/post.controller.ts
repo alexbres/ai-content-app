@@ -34,12 +34,46 @@ async function enrichPost(post: any, userId?: number) {
 
 // moved to utils/auth
 
-async function ensurePremiumAccess(post: any, req: Request) {
-  if (!post.is_premium) return true
+type PremiumAccessResult = {
+  hasAccess: boolean
+  post: any
+}
+
+function buildPremiumPreview(post: any): string {
+  if (typeof post.preview === 'string' && post.preview.trim()) {
+    return post.preview.trim()
+  }
+  const paragraphs = (post.content ?? '')
+    .split(/\n{2,}/)
+    .map((p: string) => p.trim())
+    .filter(Boolean)
+  if (!paragraphs.length) return ''
+  return paragraphs.slice(0, 2).join('\n\n')
+}
+
+function sanitizePremiumPost(post: any): any {
+  return {
+    ...post,
+    content: buildPremiumPreview(post),
+  }
+}
+
+async function ensurePremiumAccess(post: any, req: Request): Promise<PremiumAccessResult> {
+  if (!post.is_premium) {
+    return { hasAccess: true, post }
+  }
+
   const numericUserId = await resolveNumericUserIdFromReq(req)
-  if (!numericUserId) return false
+  if (!numericUserId) {
+    return { hasAccess: false, post: sanitizePremiumPost(post) }
+  }
+
   const sub = await SubscriptionRepository.findByUserId(numericUserId)
-  return Boolean(sub && (sub.status === 'active' || sub.status === 'past_due' || sub.plan === 'trial'))
+  const hasAccess = Boolean(sub && (sub.status === 'active' || sub.status === 'past_due' || sub.plan === 'trial'))
+  if (hasAccess) {
+    return { hasAccess: true, post }
+  }
+  return { hasAccess: false, post: sanitizePremiumPost(post) }
 }
 
 import fs from 'node:fs/promises'
@@ -167,10 +201,12 @@ export class PostController {
       const id = Number(req.params.id)
       const post = await PostRepository.findById(id)
       if (!post) return res.status(404).json({ error: 'Not Found' })
-      const hasAccess = await ensurePremiumAccess(post, req)
-      if (!hasAccess) return res.status(402).json({ error: 'Payment Required' })
-      const enriched = await enrichPost(post)
-      res.json(enriched)
+      const { hasAccess, post: resolvedPost } = await ensurePremiumAccess(post, req)
+      const enriched = await enrichPost(resolvedPost)
+      res.json({
+        ...enriched,
+        requires_subscription: post.is_premium && !hasAccess,
+      })
     } catch (err) {
       next(err)
     }
